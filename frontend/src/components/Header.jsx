@@ -1,5 +1,5 @@
 import React from 'react';
-import { User, Sun, Moon, CupSoda } from 'lucide-react';
+import { User, Sun, Moon } from 'lucide-react';
 
 const Header = ({ theme, toggleTheme, onOpenPortfolio }) => {
     return (
@@ -22,60 +22,63 @@ const Header = ({ theme, toggleTheme, onOpenPortfolio }) => {
                 justifyContent: 'space-between'
             }}>
                 {/* Logo */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <div style={{ fontSize: '2rem', animation: 'float 3s ease-in-out infinite' }}>☕</div>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px', cursor: 'pointer', transition: 'transform 0.2s' }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.02)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
+                    <div style={{ fontSize: '1.8rem', animation: 'float 3s ease-in-out infinite' }}>☕</div>
                     <div>
-                        <h1 style={{ fontFamily: "'Playfair Display', serif", fontSize: '1.5rem', color: 'var(--accent-primary)', fontWeight: 700, margin: 0 }}>SipsNSecrets</h1>
-                        <p style={{ fontSize: '0.75rem', color: 'var(--text-tertiary)', margin: 0 }}>De-Centralized Truth</p>
+                        <h1 style={{ fontFamily: "'Playfair Display', 'Georgia', serif", fontSize: '1.4rem', color: 'var(--accent-primary)', fontWeight: 700, margin: 0, letterSpacing: '-0.5px' }}>SipsNSecrets</h1>
+                        <p style={{ fontSize: '0.7rem', color: 'var(--text-tertiary)', margin: 0, fontWeight: 500 }}>De-Centralized Truth</p>
                     </div>
                 </div>
 
                 {/* Actions */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
                     {/* Balance Badge */}
                     <div style={{
                         display: 'flex',
                         alignItems: 'center',
                         gap: '8px',
                         background: 'var(--bg-tertiary)',
-                        padding: '8px 16px',
+                        padding: '10px 18px',
                         borderRadius: '50px',
-                        border: '1px solid var(--border-color)'
+                        border: '1px solid var(--border-color)',
+                        transition: 'all 0.3s'
                     }}>
                         <span>💰</span>
-                        <span style={{ fontWeight: 600, color: 'var(--accent-gold)' }}>1000 CC</span>
+                        <span style={{ fontWeight: 600, color: 'var(--accent-primary)', fontSize: '0.95rem' }}>1000 CC</span>
                     </div>
 
                     {/* Theme Toggle */}
                     <button onClick={toggleTheme} style={{
                         width: '40px',
                         height: '40px',
-                        borderRadius: '50%',
+                        borderRadius: '8px',
                         background: 'var(--bg-tertiary)',
                         border: '1px solid var(--border-color)',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         cursor: 'pointer',
-                        color: 'var(--text-primary)'
-                    }}>
+                        color: 'var(--text-primary)',
+                        transition: 'all 0.3s'
+                    }} title={theme === 'light' ? 'Switch to Dark' : 'Switch to Light'}>
                         {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
                     </button>
 
-                    {/* Profile Icon / Portfolio Toggle */}
+                    {/* Portfolio Toggle */}
                     <button onClick={onOpenPortfolio} style={{
                         width: '40px',
                         height: '40px',
-                        borderRadius: '50%',
-                        background: 'var(--accent-primary)',
+                        borderRadius: '8px',
+                        background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
                         border: 'none',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         cursor: 'pointer',
                         color: 'white',
-                        boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
-                    }}>
+                        boxShadow: 'var(--shadow-md)',
+                        transition: 'transform 0.2s'
+                    }} onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'} onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}>
                         <User size={20} />
                     </button>
                 </div>

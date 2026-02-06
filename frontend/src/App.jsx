@@ -37,7 +37,7 @@ function App() {
             <SplashScreen onComplete={() => setSplashComplete(true)} />
 
             {splashComplete && (
-                <div className="app-container" style={{ animation: 'fadeIn 1s ease-in' }}>
+                <div className="app-container" style={{ animation: 'fadeIn 0.6s ease-in' }}>
                     <Header
                         theme={theme}
                         toggleTheme={toggleTheme}
@@ -53,12 +53,12 @@ function App() {
                         {/* Navigation Tabs */}
                         <div className="nav-tabs" style={{
                             background: 'var(--bg-secondary)',
-                            borderRadius: '15px',
-                            padding: '10px',
+                            borderRadius: '12px',
+                            padding: '8px',
                             display: 'flex',
-                            gap: '10px',
+                            gap: '8px',
                             boxShadow: 'var(--shadow-sm)',
-                            marginBottom: '32px',
+                            marginBottom: '40px',
                             border: '1px solid var(--border-color)'
                         }}>
                             {[
@@ -71,13 +71,13 @@ function App() {
                                     onClick={() => setCurrentView(tab.id)}
                                     style={{
                                         flex: 1,
-                                        padding: '15px 20px',
-                                        background: currentView === tab.id ? 'linear-gradient(135deg, var(--tea-medium) 0%, var(--tea-dark) 100%)' : 'transparent',
-                                        color: currentView === tab.id ? 'var(--tea-cream)' : 'var(--text-secondary)',
+                                        padding: '14px 20px',
+                                        background: currentView === tab.id ? 'linear-gradient(135deg, var(--accent-primary) 0%, var(--accent-secondary) 100%)' : 'transparent',
+                                        color: currentView === tab.id ? 'white' : 'var(--text-secondary)',
                                         border: 'none',
-                                        borderRadius: '10px',
-                                        fontSize: '1rem',
-                                        fontWeight: 500,
+                                        borderRadius: '8px',
+                                        fontSize: '0.95rem',
+                                        fontWeight: 600,
                                         cursor: 'pointer',
                                         transition: 'all 0.3s ease',
                                         display: 'flex',
@@ -85,6 +85,16 @@ function App() {
                                         justifyContent: 'center',
                                         gap: '10px',
                                         boxShadow: currentView === tab.id ? 'var(--shadow-md)' : 'none'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        if (currentView !== tab.id) {
+                                            e.currentTarget.style.background = 'var(--bg-tertiary)';
+                                        }
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        if (currentView !== tab.id) {
+                                            e.currentTarget.style.background = 'transparent';
+                                        }
                                     }}
                                 >
                                     {tab.icon}
