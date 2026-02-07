@@ -1,6 +1,26 @@
 # SipNSecret
 
-A comprehensive cryptocurrency portfolio management application built with React and Vite.
+A decentralized prediction market platform with oracle consensus-based settlement.
+
+**Key Features**:
+- 🎲 Prediction markets with dynamic pricing (AMM)
+- 👥 Decentralized oracle system with reputation tracking
+- 💰 Credibility Coin (CC) system - non-transferable, earned through accuracy
+- 🔐 Privacy-first (no personal data collection, pseudonym-based)
+- ⚡ Automatic market settlement on consensus
+
+**Status**: Alpha (Core mechanics 85% complete, oracle system production-ready)
+
+## Quick Links
+
+📚 **Documentation**:
+- [Oracle System](backend/ORACLE_SYSTEM.md) - Full oracle implementation guide
+- [Oracle Implementation Summary](backend/ORACLE_IMPLEMENTATION_SUMMARY.md) - Quick overview
+- [FR5 Coverage Report](backend/FR5_COVERAGE_REPORT.md) - Requirements compliance
+
+🚀 **Getting Started**:
+- [Backend Setup](docs/BACKEND_SETUP.md)
+- [Development Guide](docs/DEVELOPMENT.md)
 
 ## Project Structure
 

@@ -249,3 +249,193 @@ class OracleService:
             logger.error(f"Error settling market {market_id}: {str(e)}")
             raise
 
+    # Oracle-related methods
+    def _compute_oracle_reputation(self, oracle_id: str) -> float:
+        """Compute oracle reputation as correct_reports / total_reports (default 0.6)"""
+        supabase = get_supabase_client()
+        # Only consider resolved reports (status correct/incorrect) for reputation
+        resp = supabase.table('oracle_reports').select('verdict', 'status').eq('oracle_id', oracle_id).in_('status', ['correct', 'incorrect']).execute()
+        if not resp.data:
+            return 0.6
+
+        total = len(resp.data)
+        correct = 0
+        for r in resp.data:
+            if r.get('status') == 'correct':
+                correct += 1
+
+        return float(correct) / float(total) if total > 0 else 0.6
+
+    def submit_oracle_report(self, oracle_id: str, market_id: str, verdict: str, evidence, stake: float):
+        """Submit an oracle report, lock stake, and check consensus.
+
+        Returns the created report record and whether consensus triggered settlement.
+        """
+        if verdict not in ['true', 'false']:
+            raise ValueError("verdict must be 'true' or 'false')")
+
+        stake = float(stake)
+        if stake < 5.0:
+            raise ValueError('Minimum oracle stake is 5 CCs')
+
+        supabase = get_supabase_client()
+
+        # Validate market
+        market_resp = supabase.table('markets').select('*').eq('id', market_id).execute()
+        if not market_resp.data:
+            raise ValueError('Market not found')
+
+        market = Market.from_dict(market_resp.data[0])
+        if not market.is_active():
+            raise ValueError('Market is not active or already resolved')
+
+        # Validate oracle user exists and has balance
+        user_resp = supabase.table('users').select('*').eq('id', oracle_id).execute()
+        if not user_resp.data:
+            raise ValueError('Oracle user not found')
+
+        oracle = User.from_dict(user_resp.data[0])
+        if oracle.available_balance < stake:
+            raise ValueError('Insufficient available balance for oracle stake')
+
+        # Lock oracle stake
+        oracle.lock_balance(stake)
+        supabase.table('users').update({
+            'available_balance': oracle.available_balance,
+            'locked_balance': oracle.locked_balance
+        }).eq('id', oracle_id).execute()
+
+        # Insert oracle report
+        report_payload = {
+            'oracle_id': oracle_id,
+            'market_id': market_id,
+            'verdict': verdict,
+            'evidence': evidence or [],
+            'stake': stake,
+            'status': 'pending'
+        }
+
+        insert_resp = supabase.table('oracle_reports').insert(report_payload).execute()
+        report = insert_resp.data[0] if insert_resp.data else None
+
+        # After insertion, check consensus
+        consensus = self.check_consensus(market_id)
+        triggered = False
+        if consensus in ['true', 'false']:
+            # Trigger market settlement
+            try:
+                self.settle_market(market_id, consensus)
+                # After settlement, apply oracle payouts and update reputations
+                self._apply_oracle_payouts(market_id, consensus)
+                triggered = True
+            except Exception as e:
+                logger.error(f"Error auto-settling market {market_id}: {e}")
+
+        return report, triggered
+
+    def check_consensus(self, market_id: str):
+        """Check oracle consensus for a market.
+
+        Returns 'true', 'false', or None (inconclusive).
+        """
+        supabase = get_supabase_client()
+        resp = supabase.table('oracle_reports').select('*').eq('market_id', market_id).execute()
+        reports = resp.data if resp.data else []
+
+        if len(reports) < 3:
+            return None
+
+        weighted_true = 0.0
+        weighted_false = 0.0
+
+        for r in reports:
+            rep = self._compute_oracle_reputation(r.get('oracle_id'))
+            weight = float(r.get('stake', 0.0)) * rep
+            if r.get('verdict') == 'true':
+                weighted_true += weight
+            else:
+                weighted_false += weight
+
+        total = weighted_true + weighted_false
+        if total == 0:
+            return None
+
+        consensus_score = weighted_true / total
+        if consensus_score >= 0.75:
+            return 'true'
+        if consensus_score <= 0.25:
+            return 'false'
+
+        return None
+
+    def _apply_oracle_payouts(self, market_id: str, consensus: str):
+        """Apply payouts to oracles based on consensus and update their reputations."""
+        supabase = get_supabase_client()
+        reports_resp = supabase.table('oracle_reports').select('*').eq('market_id', market_id).execute()
+        reports = reports_resp.data if reports_resp.data else []
+
+        for r in reports:
+            oracle_id = r.get('oracle_id')
+            stake = float(r.get('stake', 0.0))
+            verdict = r.get('verdict')
+
+            # Compute reputation to decide multiplier
+            rep = self._compute_oracle_reputation(oracle_id)
+            if rep > 0.8:
+                mult = 2.0
+            elif rep > 0.6:
+                mult = 1.5
+            else:
+                mult = 1.2
+
+            base_reward = 1.5
+            reward_multiplier = base_reward * mult
+
+            # Load oracle user
+            user_resp = supabase.table('users').select('*').eq('id', oracle_id).execute()
+            if not user_resp.data:
+                logger.warning(f"Oracle user {oracle_id} not found for payout")
+                continue
+
+            oracle = User.from_dict(user_resp.data[0])
+
+            if verdict == consensus:
+                # Pay out reward, unlock stake + reward
+                payout = stake * reward_multiplier
+                # unlock stake (remove from locked and add to available), then add payout
+                try:
+                    oracle.unlock_balance(stake)
+                except Exception:
+                    # If unlocking fails, adjust locked manually
+                    oracle.locked_balance = max(0.0, oracle.locked_balance - stake)
+                oracle.available_balance += payout
+                oracle.total_earned += payout
+                new_status = 'correct'
+            else:
+                # Oracle loses stake (locked decreases, available not increased)
+                # remove stake from locked and record loss
+                try:
+                    # Reduce locked without adding to available
+                    if oracle.locked_balance >= stake:
+                        oracle.locked_balance -= stake
+                    else:
+                        oracle.locked_balance = 0.0
+                except Exception:
+                    oracle.locked_balance = max(0.0, oracle.locked_balance - stake)
+
+                oracle.total_lost += stake
+                new_status = 'incorrect'
+
+            # Persist user update
+            supabase.table('users').update({
+                'available_balance': oracle.available_balance,
+                'locked_balance': oracle.locked_balance,
+                'total_earned': oracle.total_earned,
+                'total_lost': oracle.total_lost
+            }).eq('id', oracle_id).execute()
+
+            # Update report status
+            supabase.table('oracle_reports').update({
+                'status': new_status
+            }).eq('id', r.get('id')).execute()
+

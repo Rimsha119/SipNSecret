@@ -1,7 +1,89 @@
-import React from 'react';
-import { Eye, CheckCircle, XCircle, Award, TrendingUp } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Eye, CheckCircle, XCircle, Award, TrendingUp, AlertCircle } from 'lucide-react';
+import { marketsAPI } from '../services/api';
 
 const Oracle = () => {
+    const [markets, setMarkets] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    const [selectedMarket, setSelectedMarket] = useState(null);
+    const [verdict, setVerdict] = useState(null);
+    const [evidence, setEvidence] = useState('');
+    const [stake, setStake] = useState(5);
+    const [submitting, setSubmitting] = useState(false);
+
+    useEffect(() => {
+        const fetchMarkets = async () => {
+            try {
+                setLoading(true);
+                const data = await marketsAPI.getMarkets({ status: 'active', limit: 50 });
+                setMarkets(data.markets || []);
+            } catch (err) {
+                setError(err.message || 'Failed to load markets');
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchMarkets();
+    }, []);
+
+    const handleSubmitReport = async () => {
+        if (!selectedMarket || !verdict || stake < 5) {
+            setError('Please select market, verdict, and stake at least 5 CC');
+            return;
+        }
+
+        setSubmitting(true);
+        try {
+            const userId = localStorage.getItem('userId');
+            if (!userId) {
+                setError('Please initialize your pseudonym first');
+                return;
+            }
+
+            const response = await fetch('/oracles/report', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    oracle_id: userId,
+                    market_id: selectedMarket.id,
+                    verdict: verdict,
+                    evidence: evidence ? [evidence] : [],
+                    stake: parseFloat(stake)
+                })
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.error || 'Failed to submit report');
+            }
+
+            const result = await response.json();
+            
+            if (result.consensus_triggered) {
+                setError(null);
+                alert(`✅ Consensus reached! Market resolved to ${result.report.verdict === 'true' ? 'TRUE' : 'FALSE'}`);
+            } else {
+                alert('✅ Report submitted! Waiting for more oracles...');
+            }
+
+            // Reset form
+            setSelectedMarket(null);
+            setVerdict(null);
+            setEvidence('');
+            setStake(5);
+            
+            // Refresh markets
+            const data = await marketsAPI.getMarkets({ status: 'active', limit: 50 });
+            setMarkets(data.markets || []);
+        } catch (err) {
+            setError(err.message);
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
     return (
         <div className="oracle-container" style={{ maxWidth: '1000px', margin: '0 auto', animation: 'slideUp 0.5s ease-out' }}>
             {/* Hero Section */}
@@ -30,134 +112,255 @@ const Oracle = () => {
                         <h2 style={{ fontSize: '2rem', marginBottom: 0, fontWeight: 700 }}>Oracle Dashboard</h2>
                     </div>
                     <p style={{ opacity: 0.95, lineHeight: 1.6, fontSize: '1.05rem', marginBottom: '24px' }}>
-                        Help resolve markets by providing evidence-based truth reports. Your reliability increases your verification power and rewards.
+                        Help resolve markets by submitting evidence-based truth reports. Build reputation and earn CC rewards for accurate predictions.
                     </p>
                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px' }}>
                         <div style={{ background: 'rgba(255,255,255,0.15)', padding: '20px', borderRadius: '8px', backdropFilter: 'blur(10px)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                                 <Award size={20} />
-                                <div style={{ fontSize: '0.8rem', opacity: 0.9, fontWeight: 600 }}>Reliability</div>
+                                <div style={{ fontSize: '0.8rem', opacity: 0.9, fontWeight: 600 }}>Stake Required</div>
                             </div>
-                            <div style={{ fontSize: '2rem', fontWeight: 700 }}>98%</div>
+                            <div style={{ fontSize: '2rem', fontWeight: 700 }}>5+ CC</div>
                         </div>
                         <div style={{ background: 'rgba(255,255,255,0.15)', padding: '20px', borderRadius: '8px', backdropFilter: 'blur(10px)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                                 <CheckCircle size={20} />
-                                <div style={{ fontSize: '0.8rem', opacity: 0.9, fontWeight: 600 }}>Pending Votes</div>
+                                <div style={{ fontSize: '0.8rem', opacity: 0.9, fontWeight: 600 }}>Min. Oracles</div>
                             </div>
-                            <div style={{ fontSize: '2rem', fontWeight: 700 }}>12</div>
+                            <div style={{ fontSize: '2rem', fontWeight: 700 }}>3</div>
                         </div>
                         <div style={{ background: 'rgba(255,255,255,0.15)', padding: '20px', borderRadius: '8px', backdropFilter: 'blur(10px)' }}>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
                                 <TrendingUp size={20} />
-                                <div style={{ fontSize: '0.8rem', opacity: 0.9, fontWeight: 600 }}>Total Earned</div>
+                                <div style={{ fontSize: '0.8rem', opacity: 0.9, fontWeight: 600 }}>Reward</div>
                             </div>
-                            <div style={{ fontSize: '2rem', fontWeight: 700 }}>450 CC</div>
+                            <div style={{ fontSize: '2rem', fontWeight: 700 }}>1.5-3x</div>
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Markets to Resolve */}
-            <div className="markets-to-resolve" style={{
-                background: 'var(--bg-secondary)',
-                border: '1px solid var(--border-color)',
-                borderRadius: '12px',
-                padding: '32px',
-                overflow: 'hidden'
-            }}>
-                <h3 style={{ marginBottom: '24px', fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-primary)' }}>Pending Resolution</h3>
-                <div style={{ display: 'grid', gap: '16px' }}>
-                    {[1, 2, 3].map((i) => (
-                        <div key={i} style={{
-                            padding: '20px',
+            {/* Error Display */}
+            {error && (
+                <div style={{
+                    background: 'rgba(220, 38, 38, 0.1)',
+                    border: '1px solid rgba(220, 38, 38, 0.3)',
+                    color: '#dc2626',
+                    padding: '16px',
+                    borderRadius: '8px',
+                    marginBottom: '24px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px'
+                }}>
+                    <AlertCircle size={20} />
+                    {error}
+                </div>
+            )}
+
+            {/* Loading State */}
+            {loading && (
+                <div style={{
+                    textAlign: 'center',
+                    padding: '48px 24px',
+                    color: 'var(--text-secondary)'
+                }}>
+                    <div style={{ fontSize: '1.1rem' }}>Loading active markets...</div>
+                </div>
+            )}
+
+            {/* Markets Grid */}
+            {!loading && (
+                <div className="markets-to-resolve" style={{
+                    background: 'var(--bg-secondary)',
+                    border: '1px solid var(--border-color)',
+                    borderRadius: '12px',
+                    padding: '32px',
+                    overflow: 'hidden'
+                }}>
+                    <h3 style={{ marginBottom: '24px', fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-primary)' }}>
+                        Active Markets ({markets.length})
+                    </h3>
+
+                    {!selectedMarket ? (
+                        <div style={{ display: 'grid', gap: '16px' }}>
+                            {markets.slice(0, 5).map((market) => (
+                                <div
+                                    key={market.id}
+                                    onClick={() => setSelectedMarket(market)}
+                                    style={{
+                                        padding: '20px',
+                                        background: 'var(--bg-tertiary)',
+                                        borderRadius: '8px',
+                                        border: '2px solid var(--border-color)',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.3s'
+                                    }}
+                                    onMouseEnter={(e) => {
+                                        e.currentTarget.style.borderColor = 'var(--accent-primary)';
+                                        e.currentTarget.style.boxShadow = 'var(--shadow-md)';
+                                    }}
+                                    onMouseLeave={(e) => {
+                                        e.currentTarget.style.borderColor = 'var(--border-color)';
+                                        e.currentTarget.style.boxShadow = 'none';
+                                    }}
+                                >
+                                    <h4 style={{ marginBottom: '8px', fontWeight: 600, color: 'var(--text-primary)', fontSize: '1rem' }}>
+                                        {market.text}
+                                    </h4>
+                                    <div style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', marginBottom: '12px' }}>
+                                        Category: {market.category} • Current Price: {(market.price * 100).toFixed(0)}%
+                                    </div>
+                                    <div style={{
+                                        fontSize: '0.9rem',
+                                        color: 'var(--text-secondary)',
+                                        padding: '10px',
+                                        background: 'var(--bg-secondary)',
+                                        borderRadius: '6px'
+                                    }}>
+                                        Click to submit oracle report and help resolve this market
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    ) : (
+                        /* Oracle Report Submission Form */
+                        <div style={{
                             background: 'var(--bg-tertiary)',
-                            borderRadius: '8px',
                             border: '1px solid var(--border-color)',
-                            transition: 'all 0.3s'
-                        }} onMouseEnter={(e) => {
-                            e.currentTarget.style.borderColor = 'var(--accent-primary)';
-                            e.currentTarget.style.boxShadow = 'var(--shadow-md)';
-                        }} onMouseLeave={(e) => {
-                            e.currentTarget.style.borderColor = 'var(--border-color)';
-                            e.currentTarget.style.boxShadow = 'none';
+                            borderRadius: '12px',
+                            padding: '24px'
                         }}>
-                            <div style={{ marginBottom: '4px' }}>
-                                <h4 style={{ marginBottom: '8px', fontWeight: 600, color: 'var(--text-primary)', fontSize: '1rem' }}>
-                                    {i === 1 ? "Did 'Project Orion' get cancelled?" : i === 2 ? "Is the Dean actually resigning?" : "Does the cafeteria serve sushi now?"}
-                                </h4>
-                                <div style={{ fontSize: '0.85rem', color: 'var(--text-tertiary)', marginBottom: '12px' }}>
-                                    Market ID: #{1000 + i} • Submitted 3 days ago • 45 traders
+                            <h4 style={{ marginBottom: '16px', fontWeight: 600, color: 'var(--text-primary)', fontSize: '1.1rem' }}>
+                                Submit Oracle Report
+                            </h4>
+                            <div style={{ marginBottom: '16px', padding: '12px', background: 'var(--bg-secondary)', borderRadius: '6px' }}>
+                                <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '4px' }}>Market</div>
+                                <div style={{ color: 'var(--text-secondary)' }}>{selectedMarket.text}</div>
+                            </div>
+
+                            {/* Verdict Selection */}
+                            <div style={{ marginBottom: '16px' }}>
+                                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                                    Your Verdict
+                                </label>
+                                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                    <button
+                                        onClick={() => setVerdict('true')}
+                                        style={{
+                                            padding: '12px',
+                                            background: verdict === 'true' ? 'var(--success)' : 'var(--bg-secondary)',
+                                            border: `2px solid ${verdict === 'true' ? 'var(--success)' : 'var(--border-color)'}`,
+                                            borderRadius: '6px',
+                                            color: verdict === 'true' ? 'white' : 'var(--text-primary)',
+                                            cursor: 'pointer',
+                                            fontWeight: 600,
+                                            transition: 'all 0.3s'
+                                        }}
+                                    >
+                                        <CheckCircle size={16} style={{ display: 'inline', marginRight: '8px' }} />
+                                        TRUE
+                                    </button>
+                                    <button
+                                        onClick={() => setVerdict('false')}
+                                        style={{
+                                            padding: '12px',
+                                            background: verdict === 'false' ? 'var(--danger)' : 'var(--bg-secondary)',
+                                            border: `2px solid ${verdict === 'false' ? 'var(--danger)' : 'var(--border-color)'}`,
+                                            borderRadius: '6px',
+                                            color: verdict === 'false' ? 'white' : 'var(--text-primary)',
+                                            cursor: 'pointer',
+                                            fontWeight: 600,
+                                            transition: 'all 0.3s'
+                                        }}
+                                    >
+                                        <XCircle size={16} style={{ display: 'inline', marginRight: '8px' }} />
+                                        FALSE
+                                    </button>
                                 </div>
                             </div>
 
-                            {/* Evidence Section */}
-                            <div style={{
-                                marginBottom: '16px',
-                                padding: '12px',
-                                background: 'var(--bg-secondary)',
-                                borderRadius: '6px',
-                                fontSize: '0.9rem',
-                                color: 'var(--text-secondary)'
-                            }}>
-                                <div style={{ fontWeight: 600, marginBottom: '6px', color: 'var(--text-primary)' }}>Recent Evidence</div>
-                                <div>Submit evidence or report to help resolve this market.</div>
+                            {/* Evidence */}
+                            <div style={{ marginBottom: '16px' }}>
+                                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                                    Evidence/Reasoning (optional)
+                                </label>
+                                <textarea
+                                    value={evidence}
+                                    onChange={(e) => setEvidence(e.target.value)}
+                                    placeholder="Provide evidence supporting your verdict..."
+                                    style={{
+                                        width: '100%',
+                                        padding: '12px',
+                                        border: '1px solid var(--border-color)',
+                                        borderRadius: '6px',
+                                        background: 'var(--bg-secondary)',
+                                        color: 'var(--text-primary)',
+                                        fontFamily: 'inherit',
+                                        minHeight: '100px',
+                                        resize: 'vertical'
+                                    }}
+                                />
                             </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-                                <button style={{
-                                    padding: '12px 16px',
-                                    background: 'var(--success)',
-                                    border: 'none',
-                                    borderRadius: '6px',
-                                    color: 'white',
-                                    cursor: 'pointer',
-                                    fontWeight: 600,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '8px',
-                                    transition: 'all 0.3s',
-                                    fontSize: '0.95rem'
-                                }} onMouseEnter={(e) => {
-                                    e.target.style.transform = 'translateY(-2px)';
-                                    e.target.style.boxShadow = '0 4px 12px rgba(16, 185, 129, 0.2)';
-                                }} onMouseLeave={(e) => {
-                                    e.target.style.transform = 'translateY(0)';
-                                    e.target.style.boxShadow = 'none';
-                                }}>
-                                    <CheckCircle size={16} />
-                                    True
+                            {/* Stake */}
+                            <div style={{ marginBottom: '16px' }}>
+                                <label style={{ display: 'block', marginBottom: '8px', fontWeight: 600, color: 'var(--text-primary)' }}>
+                                    Oracle Stake (min 5 CC) - {stake} CC
+                                </label>
+                                <input
+                                    type="range"
+                                    min="5"
+                                    max="50"
+                                    value={stake}
+                                    onChange={(e) => setStake(e.target.value)}
+                                    style={{ width: '100%' }}
+                                />
+                            </div>
+
+                            {/* Actions */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                <button
+                                    onClick={() => {
+                                        setSelectedMarket(null);
+                                        setVerdict(null);
+                                        setEvidence('');
+                                    }}
+                                    disabled={submitting}
+                                    style={{
+                                        padding: '12px',
+                                        background: 'var(--bg-secondary)',
+                                        border: '1px solid var(--border-color)',
+                                        borderRadius: '6px',
+                                        color: 'var(--text-primary)',
+                                        cursor: submitting ? 'not-allowed' : 'pointer',
+                                        fontWeight: 600,
+                                        opacity: submitting ? 0.6 : 1
+                                    }}
+                                >
+                                    Cancel
                                 </button>
-                                <button style={{
-                                    padding: '12px 16px',
-                                    background: 'var(--danger)',
-                                    border: 'none',
-                                    borderRadius: '6px',
-                                    color: 'white',
-                                    cursor: 'pointer',
-                                    fontWeight: 600,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    gap: '8px',
-                                    transition: 'all 0.3s',
-                                    fontSize: '0.95rem'
-                                }} onMouseEnter={(e) => {
-                                    e.target.style.transform = 'translateY(-2px)';
-                                    e.target.style.boxShadow = '0 4px 12px rgba(239, 68, 68, 0.2)';
-                                }} onMouseLeave={(e) => {
-                                    e.target.style.transform = 'translateY(0)';
-                                    e.target.style.boxShadow = 'none';
-                                }}>
-                                    <XCircle size={16} />
-                                    False
+                                <button
+                                    onClick={handleSubmitReport}
+                                    disabled={submitting || !verdict}
+                                    style={{
+                                        padding: '12px',
+                                        background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
+                                        border: 'none',
+                                        borderRadius: '6px',
+                                        color: 'white',
+                                        cursor: submitting || !verdict ? 'not-allowed' : 'pointer',
+                                        fontWeight: 600,
+                                        opacity: submitting || !verdict ? 0.6 : 1
+                                    }}
+                                >
+                                    {submitting ? 'Submitting...' : 'Submit Report'}
                                 </button>
                             </div>
                         </div>
-                    ))}
+                    )}
                 </div>
-            </div>
+            )}
 
             {/* Info Box */}
             <div style={{
@@ -170,7 +373,10 @@ const Oracle = () => {
                 color: 'var(--text-secondary)'
             }}>
                 <div style={{ fontWeight: 600, color: 'var(--text-primary)', marginBottom: '6px' }}>📊 How Oracle Consensus Works</div>
-                <div>Markets resolve when 75% of oracle votes agree. Oracles with higher reliability scores have more voting power. Accurate voters are rewarded with CC.</div>
+                <div style={{ lineHeight: '1.6' }}>
+                    Markets resolve when 3+ oracles report and 75% agree. Your stake increases your voting power. 
+                    Accurate reports earn 1.5x-3x rewards. Help the community discover truth!
+                </div>
             </div>
         </div>
     );

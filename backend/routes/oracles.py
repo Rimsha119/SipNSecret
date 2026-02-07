@@ -55,3 +55,41 @@ def get_batch_predictions():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
+@oracles_bp.route('/report', methods=['POST'])
+def submit_report():
+    """Submit an oracle report (verdict + evidence + stake)."""
+    try:
+        data = request.get_json()
+        oracle_id = data.get('oracle_id')
+        market_id = data.get('market_id')
+        verdict = data.get('verdict')
+        evidence = data.get('evidence', [])
+        stake = data.get('stake')
+
+        if not all([oracle_id, market_id, verdict, stake is not None]):
+            return jsonify({'error': 'oracle_id, market_id, verdict and stake are required'}), 400
+
+        report, triggered = oracle_service.submit_oracle_report(oracle_id, market_id, verdict, evidence, stake)
+
+        resp = {'report': report, 'consensus_triggered': triggered}
+        return jsonify(resp), 201
+
+    except ValueError as ve:
+        return jsonify({'error': str(ve)}), 400
+    except Exception as e:
+        logger.error(f"Error submitting oracle report: {e}")
+        return jsonify({'error': str(e)}), 500
+
+
+@oracles_bp.route('/reports/<market_id>', methods=['GET'])
+def get_reports_for_market(market_id):
+    """Return oracle reports for a market."""
+    try:
+        supabase = get_supabase_client()
+        resp = supabase.table('oracle_reports').select('*').eq('market_id', market_id).order('created_at', desc=True).execute()
+        reports = resp.data if resp.data else []
+        return jsonify({'reports': reports}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+

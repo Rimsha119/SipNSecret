@@ -1,10 +1,12 @@
 """Market routes"""
 
 import logging
+from datetime import datetime
 from flask import Blueprint, request, jsonify
 from services.market_service import MarketService
 from services.ai_service import AIService
 from utils.supabase_client import get_supabase_client
+from utils.sanitize import sanitize_text, sanitize_category
 from models.market import Market
 from models.user import User
 from models.position import Position
@@ -352,3 +354,116 @@ def place_bet(market_id):
         logger.error(f"Error in place_bet: {str(e)}")
         return jsonify({'error': str(e)}), 500
 
+@markets_bp.route('/<market_id>', methods=['DELETE'])
+def delete_market(market_id):
+    """Delete a market and refund all locked CCs proportionally
+    
+    Only the market submitter can delete unresolved markets.
+    """
+    try:
+        data = request.get_json() or {}
+        user_id = data.get('user_id')
+        
+        if not user_id:
+            return jsonify({'error': 'user_id is required'}), 400
+        
+        supabase = get_supabase_client()
+        
+        # Get market
+        market_response = supabase.table('markets').select('*').eq('id', market_id).execute()
+        if not market_response.data:
+            return jsonify({'error': 'Market not found'}), 404
+        
+        market = Market.from_dict(market_response.data[0])
+        
+        # Check authorization - only submitter can delete
+        if market.submitter_id != user_id:
+            return jsonify({'error': 'Only market submitter can delete this market'}), 403
+        
+        # Check if market is unresolved
+        if market.status != 'active':
+            return jsonify({'error': f'Cannot delete market with status: {market.status}'}), 400
+        
+        total_locked = market.total_bet_true + market.total_bet_false
+        
+        # Get all open positions
+        positions_response = supabase.table('positions').select('*').eq(
+            'market_id', market_id
+        ).eq('status', 'open').execute()
+        
+        positions = positions_response.data if positions_response.data else []
+        
+        refunds = []
+        
+        # Refund each position holder proportionally
+        for position in positions:
+            if total_locked > 0:
+                # Calculate their proportion of the pool
+                proportion = position['cost_basis'] / total_locked
+                # Refund their original stake (not full pool)
+                refund = position['cost_basis']
+                
+                # Update user balance
+                user_response = supabase.table('users').select(
+                    'available_balance', 'locked_balance'
+                ).eq('id', position['user_id']).execute()
+                
+                if user_response.data:
+                    user_data = user_response.data[0]
+                    current_available = user_data.get('available_balance', 0)
+                    current_locked = user_data.get('locked_balance', 0)
+                    
+                    supabase.table('users').update({
+                        'available_balance': current_available + refund,
+                        'locked_balance': max(0, current_locked - refund)
+                    }).eq('id', position['user_id']).execute()
+                
+                # Mark position as closed (deleted market)
+                supabase.table('positions').update({
+                    'status': 'deleted',
+                    'updated_at': datetime.utcnow().isoformat()
+                }).eq('id', position['id']).execute()
+                
+                refunds.append({
+                    'user_id': position['user_id'],
+                    'refund_amount': refund
+                })
+        
+        # Refund submitter's stake
+        if market.submitter_id:
+            user_response = supabase.table('users').select(
+                'available_balance', 'locked_balance'
+            ).eq('id', market.submitter_id).execute()
+            
+            if user_response.data:
+                user_data = user_response.data[0]
+                current_available = user_data.get('available_balance', 0)
+                current_locked = user_data.get('locked_balance', 0)
+                
+                supabase.table('users').update({
+                    'available_balance': current_available + market.stake,
+                    'locked_balance': max(0, current_locked - market.stake)
+                }).eq('id', market.submitter_id).execute()
+            
+            refunds.append({
+                'user_id': market.submitter_id,
+                'refund_amount': market.stake,
+                'type': 'submitter'
+            })
+        
+        # Mark market as deleted (audit trail)
+        supabase.table('markets').update({
+            'status': 'deleted',
+            'updated_at': datetime.utcnow().isoformat()
+        }).eq('id', market_id).execute()
+        
+        return jsonify({
+            'message': 'Market deleted successfully',
+            'market_id': market_id,
+            'total_refunded': sum(r['refund_amount'] for r in refunds),
+            'refunds': refunds
+        }), 200
+        
+    except Exception as e:
+        logger.error(f"Error deleting market: {str(e)}")
+        return jsonify({'error': str(e)}), 500

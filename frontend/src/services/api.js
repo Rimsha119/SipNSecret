@@ -24,7 +24,12 @@ async function apiRequest(endpoint, options = {}) {
     }
 
     try {
-        const response = await fetch(url, config);
+        // Add a 30 second timeout to fetch requests
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), 30000);
+        
+        const response = await fetch(url, { ...config, signal: controller.signal });
+        clearTimeout(timeout);
         
         // Check if response is JSON
         const contentType = response.headers.get('content-type');
@@ -43,6 +48,10 @@ async function apiRequest(endpoint, options = {}) {
         return data;
     } catch (error) {
         console.error(`API Error (${endpoint}):`, error.message);
+        // Provide more helpful error messages
+        if (error.name === 'AbortError') {
+            throw new Error('Request timeout - server took too long to respond');
+        }
         throw new Error(error.message || 'Failed to fetch data from server');
     }
 }

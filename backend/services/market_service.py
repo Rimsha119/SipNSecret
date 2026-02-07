@@ -261,4 +261,126 @@ class MarketService:
                 'valid': False,
                 'error': f'Validation error: {str(e)}'
             }
-
+    
+    @staticmethod
+    def settle_market(market_id: str, resolution: str, supabase) -> Dict:
+        """Settle a market with final resolution
+        
+        Args:
+            market_id: Market to resolve
+            resolution: 'true' or 'false'
+            supabase: Supabase client
+            
+        Returns:
+            Settlement details with payouts
+        """
+        from datetime import datetime
+        import logging
+        
+        logger = logging.getLogger(__name__)
+        
+        try:
+            settlement = {
+                'market_id': market_id,
+                'resolution': resolution,
+                'submitter_payout': 0,
+                'winning_positions': [],
+                'total_payouts': 0
+            }
+            
+            # Get market
+            market_response = supabase.table('markets').select('*').eq('id', market_id).execute()
+            if not market_response.data:
+                return {'error': 'Market not found'}
+            
+            market = Market.from_dict(market_response.data[0])
+            
+            # Get all open positions for this market
+            positions_response = supabase.table('positions').select('*').eq(
+                'market_id', market_id
+            ).eq('status', 'open').execute()
+            
+            positions = positions_response.data if positions_response.data else []
+            
+            # Determine winning and losing positions
+            if resolution == 'true':
+                winning_positions = [p for p in positions if p['type'] == 'true']
+                losing_positions = [p for p in positions if p['type'] == 'false']
+            else:
+                winning_positions = [p for p in positions if p['type'] == 'false']
+                losing_positions = [p for p in positions if p['type'] == 'true']
+            
+            total_winning_shares = sum(p['shares'] for p in winning_positions)
+            total_pool = market.total_bet_true + market.total_bet_false
+            
+            # Distribute payouts to winners
+            for position in winning_positions:
+                if total_winning_shares > 0:
+                    proportion = position['shares'] / total_winning_shares
+                    payout = proportion * total_pool
+                    
+                    # Update user balance
+                    user_response = supabase.table('users').select(
+                        'available_balance'
+                    ).eq('id', position['user_id']).execute()
+                    
+                    if user_response.data:
+                        current_balance = user_response.data[0]['available_balance']
+                        supabase.table('users').update({
+                            'available_balance': current_balance + payout
+                        }).eq('id', position['user_id']).execute()
+                    
+                    # Mark position as won
+                    supabase.table('positions').update({
+                        'status': 'won',
+                        'updated_at': datetime.utcnow().isoformat()
+                    }).eq('id', position['id']).execute()
+                    
+                    settlement['winning_positions'].append({
+                        'user_id': position['user_id'],
+                        'shares': position['shares'],
+                        'payout': payout
+                    })
+                    settlement['total_payouts'] += payout
+            
+            # Mark losing positions as lost
+            for position in losing_positions:
+                supabase.table('positions').update({
+                    'status': 'lost',
+                    'updated_at': datetime.utcnow().isoformat()
+                }).eq('id', position['id']).execute()
+            
+            # Handle submitter stake return
+            if market.submitter_id:
+                if resolution == 'true':
+                    # Submitter wins 2x their stake
+                    submitter_payout = market.stake * 2
+                else:
+                    # Submitter loses their stake
+                    submitter_payout = 0
+                
+                if submitter_payout > 0:
+                    user_response = supabase.table('users').select(
+                        'available_balance'
+                    ).eq('id', market.submitter_id).execute()
+                    
+                    if user_response.data:
+                        current_balance = user_response.data[0]['available_balance']
+                        supabase.table('users').update({
+                            'available_balance': current_balance + submitter_payout,
+                            'locked_balance': max(0, current_balance - market.stake)
+                        }).eq('id', market.submitter_id).execute()
+                
+                settlement['submitter_payout'] = submitter_payout
+            
+            # Update market status
+            supabase.table('markets').update({
+                'status': 'resolved',
+                'resolved_at': datetime.utcnow().isoformat()
+            }).eq('id', market_id).execute()
+            
+            return settlement
+            
+        except Exception as e:
+            logger.error(f"Error settling market {market_id}: {str(e)}")
+            return {'error': str(e)}

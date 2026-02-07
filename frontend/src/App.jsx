@@ -68,7 +68,7 @@ function App() {
         <>
             <SplashScreen onComplete={() => setSplashComplete(true)} />
 
-            {showAuthModal && (
+            {splashComplete && showAuthModal && (
                 <div style={{
                     position: 'fixed',
                     top: 0,
@@ -80,7 +80,8 @@ function App() {
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    zIndex: 10000
+                    zIndex: 10000,
+                    animation: 'fadeIn 0.4s ease-in'
                 }}>
                     <div style={{
                         background: 'var(--bg-secondary)',
