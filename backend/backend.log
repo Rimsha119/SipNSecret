@@ -1,0 +1,40 @@
+============================================================
+SipNSecret Backend Server
+============================================================
+Environment: development
+Debug Mode: True
+Port: 5000
+============================================================
+
+Registered Routes:
+------------------------------------------------------------
+/static/<path:filename>                  GET                 
+/auth/register                           POST                
+/auth/login                              POST                
+/auth/logout                             POST                
+/auth/me                                 GET                 
+/auth/initialize                         POST                
+/auth/user/<user_id>                     GET                 
+/auth/users                              GET                 
+/markets                                 GET                 
+/markets/<market_id>                     GET                 
+/markets/submit                          POST                
+/markets/<market_id>/bet                 POST                
+/oracles/predict/<market_id>             GET,POST            
+/oracles/predict/batch                   POST                
+/health                                  GET                 
+/stats                                   GET                 
+------------------------------------------------------------
+
+ * Serving Flask app 'app'
+ * Debug mode: on
+WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://10.0.0.255:5000
+Press CTRL+C to quit
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 102-570-105
+127.0.0.1 - - [07/Feb/2026 03:01:06] "POST /auth/initialize HTTP/1.1" 201 -
+127.0.0.1 - - [07/Feb/2026 03:01:14] "POST /auth/initialize HTTP/1.1" 201 -
