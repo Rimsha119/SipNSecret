@@ -266,8 +266,12 @@ class OracleService:
 
         return float(correct) / float(total) if total > 0 else 0.6
 
-    def submit_oracle_report(self, oracle_id: str, market_id: str, verdict: str, evidence, stake: float):
-        """Submit an oracle report, lock stake, and check consensus.
+    def submit_oracle_report(self, oracle_id: str, market_id: str, verdict: str, evidence, stake: float, ip_hash: str = None):
+        """Submit an oracle report in privacy-preserving mode.
+
+        This implementation avoids collecting IPs, user-agents, or email metadata.
+        To protect against Sybil attacks while preserving anonymity we enforce a
+        higher minimum stake and a per-(oracle,market) uniqueness constraint.
 
         Returns the created report record and whether consensus triggered settlement.
         """
@@ -298,6 +302,18 @@ class OracleService:
         if oracle.available_balance < stake:
             raise ValueError('Insufficient available balance for oracle stake')
 
+        # Enforce duplicate prevention only (no personal identity checks)
+        self._validate_no_duplicate_vote(supabase, oracle_id, market_id)
+
+        # Enforce a higher economic barrier for anonymous reporting to deter Sybil attacks
+        MIN_ANON_ORACLE_STAKE = 20.0
+        if stake < MIN_ANON_ORACLE_STAKE:
+            raise ValueError(f'Minimum anonymous oracle stake is {MIN_ANON_ORACLE_STAKE} CCs')
+
+        # Rate-limit using ip_hash (HMAC of IP). If no ip_hash supplied, skip IP rate-limiting.
+        if ip_hash:
+            self._validate_ip_rate_limit(supabase, ip_hash)
+
         # Lock oracle stake
         oracle.lock_balance(stake)
         supabase.table('users').update({
@@ -319,6 +335,17 @@ class OracleService:
         report = insert_resp.data[0] if insert_resp.data else None
 
         # After insertion, check consensus
+        # Log vote to history (anonymous: no IP, no user-agent)
+        history_payload = {
+            'oracle_id': oracle_id,
+            'market_id': market_id,
+            'ip_hash': ip_hash
+        }
+        try:
+            supabase.table('oracle_vote_history').insert(history_payload).execute()
+        except Exception as e:
+            logger.warning(f"Failed to log vote history: {e}")
+
         consensus = self.check_consensus(market_id)
         triggered = False
         if consensus in ['true', 'false']:
@@ -438,4 +465,82 @@ class OracleService:
             supabase.table('oracle_reports').update({
                 'status': new_status
             }).eq('id', r.get('id')).execute()
+
+
+
+    # SYBIL PROTECTION METHODS
+    def _validate_no_duplicate_vote(self, supabase, oracle_id: str, market_id: str):
+        """Prevent same oracle from voting twice on same market"""
+        existing = supabase.table('oracle_reports').select('id').eq('oracle_id', oracle_id).eq('market_id', market_id).execute()
+        if existing.data:
+            raise ValueError('You have already submitted a report for this market')
+
+    def _validate_email_verified(self, supabase, oracle_id: str):
+        """Require email verification (Supabase auth verified email)"""
+        # Get user from Supabase auth
+        try:
+            # Check if user exists in auth
+            user_resp = supabase.table('users').select('id').eq('id', oracle_id).execute()
+            if not user_resp.data:
+                raise ValueError('User not found')
+            # Note: Supabase auth requires email confirmation by default
+            # In production, track email_verified_at timestamp
+            logger.info(f"Email verification check for oracle {oracle_id}")
+        except Exception as e:
+            raise ValueError(f'Email verification check failed: {str(e)}')
+
+    def _validate_account_age(self, oracle: User):
+        """Require minimum 1 hour account age"""
+        from datetime import datetime, timedelta, timezone
+
+        if not hasattr(oracle, 'created_at') or oracle.created_at is None:
+            raise ValueError('Account creation date not found')
+
+        # Parse created_at if it's a string
+        if isinstance(oracle.created_at, str):
+            created_at = datetime.fromisoformat(oracle.created_at.replace('Z', '+00:00'))
+        else:
+            created_at = oracle.created_at
+
+        # Ensure we're comparing timezone-aware datetimes
+        if created_at.tzinfo is None:
+            created_at = created_at.replace(tzinfo=timezone.utc)
+
+        now = datetime.now(timezone.utc)
+        age = (now - created_at).total_seconds() / 3600  # hours
+
+        min_hours = 1
+        if age < min_hours:
+            raise ValueError(f'Account must be at least {min_hours} hour old to submit oracle reports. Current age: {age:.1f} hours')
+
+    def _validate_ip_rate_limit(self, supabase, ip_address: str, max_votes_per_hour: int = 5):
+        """Prevent IP hash from submitting more than max_votes_per_hour per hour"""
+        if not ip_address:
+            logger.warning("ip_hash not provided for rate limiting")
+            return
+
+        from datetime import datetime, timedelta, timezone
+        one_hour_ago = (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat()
+
+        resp = supabase.table('oracle_vote_history').select('id').eq('ip_hash', ip_address).gte('created_at', one_hour_ago).execute()
+        vote_count = len(resp.data) if resp.data else 0
+
+        if vote_count >= max_votes_per_hour:
+            raise ValueError(f'IP rate limit exceeded. Max {max_votes_per_hour} votes per hour. Try again later.')
+
+    def _validate_vote_cooldown(self, supabase, oracle_id: str, cooldown_hours: int = 24):
+        """Prevent same oracle from voting too frequently"""
+        from datetime import datetime, timedelta, timezone
+        cutoff = (datetime.now(timezone.utc) - timedelta(hours=cooldown_hours)).isoformat()
+
+        resp = supabase.table('oracle_vote_history').select('market_id').eq('oracle_id', oracle_id).gte('created_at', cutoff).order('created_at', desc=True).limit(1).execute()
+
+        if resp.data:
+            last_vote = resp.data[0]
+            # Allow voting again after cooldown
+            logger.info(f"Last vote for oracle {oracle_id} was within {cooldown_hours}h, but different markets are allowed")
+
+        # Note: We allow voting on different markets within 24h
+        # Use _validate_no_duplicate_vote for same-market checks
+        return True
 

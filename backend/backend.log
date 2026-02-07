@@ -1,3 +1,4 @@
+nohup: ignoring input
 ============================================================
 SipNSecret Backend Server
 ============================================================
@@ -20,8 +21,11 @@ Registered Routes:
 /markets/<market_id>                     GET                 
 /markets/submit                          POST                
 /markets/<market_id>/bet                 POST                
+/markets/<market_id>                     DELETE              
 /oracles/predict/<market_id>             GET,POST            
 /oracles/predict/batch                   POST                
+/oracles/report                          POST                
+/oracles/reports/<market_id>             GET                 
 /health                                  GET                 
 /stats                                   GET                 
 ------------------------------------------------------------
@@ -31,10 +35,215 @@ Registered Routes:
 WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.
  * Running on all addresses (0.0.0.0)
  * Running on http://127.0.0.1:5000
- * Running on http://10.0.0.255:5000
+ * Running on http://10.0.3.208:5000
 Press CTRL+C to quit
  * Restarting with stat
  * Debugger is active!
- * Debugger PIN: 102-570-105
-127.0.0.1 - - [07/Feb/2026 03:01:06] "POST /auth/initialize HTTP/1.1" 201 -
-127.0.0.1 - - [07/Feb/2026 03:01:14] "POST /auth/initialize HTTP/1.1" 201 -
+ * Debugger PIN: 275-010-385
+127.0.0.1 - - [07/Feb/2026 07:20:17] "POST /auth/initialize HTTP/1.1" 201 -
+Error in classify_rumor: Error code: 401 - {'error': {'message': 'Incorrect API key provided: sk-7890a*****************************abcd. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'code': 'invalid_api_key', 'param': None}, 'status': 401}
+Error in generate_embedding: Error code: 401 - {'error': {'message': 'Incorrect API key provided: sk-7890a*****************************abcd. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'code': 'invalid_api_key', 'param': None}, 'status': 401}
+Error in generate_embedding: Error code: 401 - {'error': {'message': 'Incorrect API key provided: sk-7890a*****************************abcd. You can find your API key at https://platform.openai.com/account/api-keys.', 'type': 'invalid_request_error', 'code': 'invalid_api_key', 'param': None}, 'status': 401}
+127.0.0.1 - - [07/Feb/2026 07:20:18] "POST /markets/submit HTTP/1.1" 201 -
+127.0.0.1 - - [07/Feb/2026 07:20:18] "POST /auth/initialize HTTP/1.1" 201 -
+127.0.0.1 - - [07/Feb/2026 07:20:18] "POST /oracles/report HTTP/1.1" 400 -
+127.0.0.1 - - [07/Feb/2026 07:20:18] "POST /oracles/report HTTP/1.1" 400 -
+ * Detected change in '/workspaces/SipNSecret/backend/routes/oracles.py', reloading
+============================================================
+SipNSecret Backend Server
+============================================================
+Environment: development
+Debug Mode: True
+Port: 5000
+============================================================
+
+Registered Routes:
+------------------------------------------------------------
+/static/<path:filename>                  GET                 
+/auth/register                           POST                
+/auth/login                              POST                
+/auth/logout                             POST                
+/auth/me                                 GET                 
+/auth/initialize                         POST                
+/auth/user/<user_id>                     GET                 
+/auth/users                              GET                 
+/markets                                 GET                 
+/markets/<market_id>                     GET                 
+/markets/submit                          POST                
+/markets/<market_id>/bet                 POST                
+/markets/<market_id>                     DELETE              
+/oracles/predict/<market_id>             GET,POST            
+/oracles/predict/batch                   POST                
+/oracles/report                          POST                
+/oracles/reports/<market_id>             GET                 
+/health                                  GET                 
+/stats                                   GET                 
+------------------------------------------------------------
+
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 275-010-385
+ * Detected change in '/workspaces/SipNSecret/backend/services/oracle_service.py', reloading
+============================================================
+SipNSecret Backend Server
+============================================================
+Environment: development
+Debug Mode: True
+Port: 5000
+============================================================
+
+Registered Routes:
+------------------------------------------------------------
+/static/<path:filename>                  GET                 
+/auth/register                           POST                
+/auth/login                              POST                
+/auth/logout                             POST                
+/auth/me                                 GET                 
+/auth/initialize                         POST                
+/auth/user/<user_id>                     GET                 
+/auth/users                              GET                 
+/markets                                 GET                 
+/markets/<market_id>                     GET                 
+/markets/submit                          POST                
+/markets/<market_id>/bet                 POST                
+/markets/<market_id>                     DELETE              
+/oracles/predict/<market_id>             GET,POST            
+/oracles/predict/batch                   POST                
+/oracles/report                          POST                
+/oracles/reports/<market_id>             GET                 
+/health                                  GET                 
+/stats                                   GET                 
+------------------------------------------------------------
+
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 275-010-385
+ * Detected change in '/workspaces/SipNSecret/backend/routes/oracles.py', reloading
+============================================================
+SipNSecret Backend Server
+============================================================
+Environment: development
+Debug Mode: True
+Port: 5000
+============================================================
+
+Registered Routes:
+------------------------------------------------------------
+/static/<path:filename>                  GET                 
+/auth/register                           POST                
+/auth/login                              POST                
+/auth/logout                             POST                
+/auth/me                                 GET                 
+/auth/initialize                         POST                
+/auth/user/<user_id>                     GET                 
+/auth/users                              GET                 
+/markets                                 GET                 
+/markets/<market_id>                     GET                 
+/markets/submit                          POST                
+/markets/<market_id>/bet                 POST                
+/markets/<market_id>                     DELETE              
+/oracles/predict/<market_id>             GET,POST            
+/oracles/predict/batch                   POST                
+/oracles/report                          POST                
+/oracles/reports/<market_id>             GET                 
+/health                                  GET                 
+/stats                                   GET                 
+------------------------------------------------------------
+
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 275-010-385
+ * Detected change in '/workspaces/SipNSecret/backend/services/oracle_service.py', reloading
+============================================================
+SipNSecret Backend Server
+============================================================
+Environment: development
+Debug Mode: True
+Port: 5000
+============================================================
+
+Registered Routes:
+------------------------------------------------------------
+/static/<path:filename>                  GET                 
+/auth/register                           POST                
+/auth/login                              POST                
+/auth/logout                             POST                
+/auth/me                                 GET                 
+/auth/initialize                         POST                
+/auth/user/<user_id>                     GET                 
+/auth/users                              GET                 
+/markets                                 GET                 
+/markets/<market_id>                     GET                 
+/markets/submit                          POST                
+/markets/<market_id>/bet                 POST                
+/markets/<market_id>                     DELETE              
+/oracles/predict/<market_id>             GET,POST            
+/oracles/predict/batch                   POST                
+/oracles/report                          POST                
+/oracles/reports/<market_id>             GET                 
+/health                                  GET                 
+/stats                                   GET                 
+------------------------------------------------------------
+
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 275-010-385
+127.0.0.1 - - [07/Feb/2026 07:38:06] "GET /auth/user/8ead526d-fe66-4b8b-9148-aa42887be84b HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:38:07] "GET /auth/user/8ead526d-fe66-4b8b-9148-aa42887be84b HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:38:10] "GET /markets?status=active&limit=50&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:38:10] "GET /markets?status=active&limit=50&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:38:26] "GET /auth/user/8ead526d-fe66-4b8b-9148-aa42887be84b HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:38:26] "GET /auth/user/8ead526d-fe66-4b8b-9148-aa42887be84b HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:38:26] "GET /markets?status=active&limit=50 HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:38:27] "GET /markets?status=active&limit=50 HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:38:43] "POST /oracles/report HTTP/1.1" 400 -
+127.0.0.1 - - [07/Feb/2026 07:38:51] "POST /oracles/report HTTP/1.1" 400 -
+127.0.0.1 - - [07/Feb/2026 07:39:05] "GET /markets?status=active&limit=50&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:39:05] "GET /markets?status=active&limit=50&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:57:29] "GET /markets?status=active&limit=50 HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:57:29] "GET /auth/user/8ead526d-fe66-4b8b-9148-aa42887be84b HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:57:29] "GET /markets?status=active&limit=50 HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:57:29] "GET /auth/user/8ead526d-fe66-4b8b-9148-aa42887be84b HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:57:30] "GET /auth/user/8ead526d-fe66-4b8b-9148-aa42887be84b HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:57:31] "GET /auth/user/8ead526d-fe66-4b8b-9148-aa42887be84b HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:57:31] "GET /markets?status=active&limit=50&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:57:31] "GET /markets?status=active&limit=50&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:57:36] "GET /auth/user/8ead526d-fe66-4b8b-9148-aa42887be84b HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:57:36] "GET /auth/user/8ead526d-fe66-4b8b-9148-aa42887be84b HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:57:42] "POST /markets/b5451aab-5c9e-4a61-bfd9-e1cd98a36f63/bet HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:57:42] "GET /markets?status=active&limit=50&offset=0 HTTP/1.1" 200 -
+ * Detected change in '/workspaces/SipNSecret/backend/services/oracle_service.py', reloading
+============================================================
+SipNSecret Backend Server
+============================================================
+Environment: development
+Debug Mode: True
+Port: 5000
+============================================================
+
+Registered Routes:
+------------------------------------------------------------
+/static/<path:filename>                  GET                 
+/auth/register                           POST                
+/auth/login                              POST                
+/auth/logout                             POST                
+/auth/me                                 GET                 
+/auth/initialize                         POST                
+/auth/user/<user_id>                     GET                 
+/auth/users                              GET                 
+/markets                                 GET                 
+/markets/<market_id>                     GET                 
+/markets/submit                          POST                
+/markets/<market_id>/bet                 POST                
+/markets/<market_id>                     DELETE              
+/oracles/predict/<market_id>             GET,POST            
+/oracles/predict/batch                   POST                
+/oracles/report                          POST                
+/oracles/reports/<market_id>             GET                 
+/health                                  GET                 
+/stats                                   GET                 
+------------------------------------------------------------
+
+ * Restarting with stat
+ * Debugger is active!
+ * Debugger PIN: 275-010-385

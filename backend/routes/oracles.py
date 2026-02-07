@@ -3,6 +3,9 @@
 import logging
 from flask import Blueprint, request, jsonify
 from services.oracle_service import OracleService
+import os
+import hmac
+import hashlib
 from services.ai_service import AIService
 from utils.supabase_client import get_supabase_client
 from models.user import User
@@ -70,7 +73,22 @@ def submit_report():
         if not all([oracle_id, market_id, verdict, stake is not None]):
             return jsonify({'error': 'oracle_id, market_id, verdict and stake are required'}), 400
 
-        report, triggered = oracle_service.submit_oracle_report(oracle_id, market_id, verdict, evidence, stake)
+        # Extract client IP (first hop) if available and compute HMAC(ip) for privacy-preserving rate-limits
+        ip_address = request.headers.get('X-Forwarded-For')
+        if ip_address:
+            ip_address = ip_address.split(',')[0].strip()
+        else:
+            ip_address = request.headers.get('X-Real-IP', request.remote_addr)
+
+        ip_hash = None
+        secret = os.getenv('IP_HMAC_SECRET')
+        if secret and ip_address:
+            try:
+                ip_hash = hmac.new(secret.encode('utf-8'), ip_address.encode('utf-8'), hashlib.sha256).hexdigest()
+            except Exception:
+                ip_hash = None
+
+        report, triggered = oracle_service.submit_oracle_report(oracle_id, market_id, verdict, evidence, stake, ip_hash)
 
         resp = {'report': report, 'consensus_triggered': triggered}
         return jsonify(resp), 201
