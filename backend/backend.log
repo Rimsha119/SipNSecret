@@ -247,3 +247,12 @@ Registered Routes:
  * Restarting with stat
  * Debugger is active!
  * Debugger PIN: 275-010-385
+127.0.0.1 - - [07/Feb/2026 07:59:47] "GET /auth/user/8ead526d-fe66-4b8b-9148-aa42887be84b HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:59:47] "GET /markets?status=active&limit=50 HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:59:49] "GET /markets?status=active&limit=50&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:59:50] "GET /markets?status=active&limit=50 HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:59:50] "GET /auth/user/8ead526d-fe66-4b8b-9148-aa42887be84b HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:59:56] "GET /auth/user/8ead526d-fe66-4b8b-9148-aa42887be84b HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 07:59:57] "GET /auth/user/8ead526d-fe66-4b8b-9148-aa42887be84b HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 08:00:01] "GET /markets?status=active&limit=50&offset=0 HTTP/1.1" 200 -
+127.0.0.1 - - [07/Feb/2026 08:00:01] "GET /markets?status=active&limit=50&offset=0 HTTP/1.1" 200 -
