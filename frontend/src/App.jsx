@@ -6,13 +6,37 @@ import Markets from './components/Markets';
 import Submit from './components/Submit';
 import Oracle from './components/Oracle';
 import { BarChart3, Send, Eye } from 'lucide-react';
+import { useAuth } from './hooks/useAuth';
 import './styles/global.css';
 
 function App() {
+    const { user, loading: authLoading, initialize } = useAuth();
     const [splashComplete, setSplashComplete] = useState(false);
     const [theme, setTheme] = useState('light');
     const [isPortfolioOpen, setIsPortfolioOpen] = useState(false);
     const [currentView, setCurrentView] = useState('markets');
+    const [showAuthModal, setShowAuthModal] = useState(false);
+    const [pseudonym, setPseudonym] = useState('');
+
+    // Show auth modal if user is not initialized
+    useEffect(() => {
+        if (!authLoading && !user) {
+            setShowAuthModal(true);
+        }
+    }, [authLoading, user]);
+
+    const handleAuthSubmit = async (e) => {
+        e.preventDefault();
+        if (pseudonym.trim()) {
+            try {
+                await initialize(pseudonym.trim());
+                setShowAuthModal(false);
+                setPseudonym('');
+            } catch (error) {
+                console.error('Failed to initialize user:', error);
+            }
+        }
+    };
 
     useEffect(() => {
         // Apply theme to body
@@ -36,12 +60,80 @@ function App() {
         <>
             <SplashScreen onComplete={() => setSplashComplete(true)} />
 
+            {showAuthModal && (
+                <div style={{
+                    position: 'fixed',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'rgba(0, 0, 0, 0.7)',
+                    backdropFilter: 'blur(4px)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    zIndex: 10000
+                }}>
+                    <div style={{
+                        background: 'var(--bg-secondary)',
+                        padding: '32px',
+                        borderRadius: '16px',
+                        maxWidth: '400px',
+                        width: '90%',
+                        border: '1px solid var(--border-color)'
+                    }}>
+                        <h2 style={{ marginTop: 0, marginBottom: '16px', color: 'var(--text-primary)' }}>
+                            Enter Your Pseudonym
+                        </h2>
+                        <p style={{ color: 'var(--text-secondary)', marginBottom: '24px', fontSize: '0.9rem' }}>
+                            Choose a pseudonym to start trading. New users receive 100 CC to get started!
+                        </p>
+                        <form onSubmit={handleAuthSubmit}>
+                            <input
+                                type="text"
+                                value={pseudonym}
+                                onChange={(e) => setPseudonym(e.target.value)}
+                                placeholder="Your pseudonym"
+                                style={{
+                                    width: '100%',
+                                    padding: '12px 16px',
+                                    border: '1px solid var(--border-color)',
+                                    borderRadius: '8px',
+                                    background: 'var(--bg-tertiary)',
+                                    color: 'var(--text-primary)',
+                                    fontSize: '1rem',
+                                    marginBottom: '16px'
+                                }}
+                                required
+                            />
+                            <button
+                                type="submit"
+                                style={{
+                                    width: '100%',
+                                    padding: '12px 16px',
+                                    background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    fontSize: '1rem'
+                                }}
+                            >
+                                Start Trading
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            )}
+
             {splashComplete && (
                 <div className="app-container" style={{ animation: 'fadeIn 0.6s ease-in' }}>
                     <Header
                         theme={theme}
                         toggleTheme={toggleTheme}
                         onOpenPortfolio={() => setIsPortfolioOpen(true)}
+                        user={user}
                     />
 
                     <PortfolioSidebar

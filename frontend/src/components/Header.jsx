@@ -1,7 +1,10 @@
 import React from 'react';
 import { User, Sun, Moon } from 'lucide-react';
 
-const Header = ({ theme, toggleTheme, onOpenPortfolio }) => {
+const Header = ({ theme, toggleTheme, onOpenPortfolio, user }) => {
+    const balance = user?.available_balance || 0;
+    const pseudonym = user?.pseudonym || 'Guest';
+    
     return (
         <header style={{
             position: 'sticky',
@@ -44,8 +47,24 @@ const Header = ({ theme, toggleTheme, onOpenPortfolio }) => {
                         transition: 'all 0.3s'
                     }}>
                         <span>💰</span>
-                        <span style={{ fontWeight: 600, color: 'var(--accent-primary)', fontSize: '0.95rem' }}>1000 CC</span>
+                        <span style={{ fontWeight: 600, color: 'var(--accent-primary)', fontSize: '0.95rem' }}>
+                            {balance.toFixed(2)} CC
+                        </span>
                     </div>
+                    
+                    {/* User Pseudonym */}
+                    {user && (
+                        <div style={{
+                            padding: '8px 16px',
+                            background: 'var(--bg-tertiary)',
+                            borderRadius: '20px',
+                            border: '1px solid var(--border-color)',
+                            fontSize: '0.9rem',
+                            color: 'var(--text-secondary)'
+                        }}>
+                            {pseudonym}
+                        </div>
+                    )}
 
                     {/* Theme Toggle */}
                     <button onClick={toggleTheme} style={{
