@@ -1,9 +1,10 @@
 /**
  * API Service for communicating with Flask backend
- * All API calls go through Flask, which then communicates with Supabase
+ * In development: Uses Vite proxy (relative URLs)
+ * In production: Uses absolute backend URL from environment
  */
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 /**
  * Generic API request handler
@@ -24,7 +25,16 @@ async function apiRequest(endpoint, options = {}) {
 
     try {
         const response = await fetch(url, config);
-        const data = await response.json();
+        
+        // Check if response is JSON
+        const contentType = response.headers.get('content-type');
+        let data;
+        
+        if (contentType && contentType.includes('application/json')) {
+            data = await response.json();
+        } else {
+            data = { error: await response.text() };
+        }
 
         if (!response.ok) {
             throw new Error(data.error || `HTTP error! status: ${response.status}`);
@@ -32,8 +42,8 @@ async function apiRequest(endpoint, options = {}) {
 
         return data;
     } catch (error) {
-        console.error(`API Error (${endpoint}):`, error);
-        throw error;
+        console.error(`API Error (${endpoint}):`, error.message);
+        throw new Error(error.message || 'Failed to fetch data from server');
     }
 }
 

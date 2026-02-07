@@ -17,6 +17,8 @@ function App() {
     const [currentView, setCurrentView] = useState('markets');
     const [showAuthModal, setShowAuthModal] = useState(false);
     const [pseudonym, setPseudonym] = useState('');
+    const [authError, setAuthError] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     // Show auth modal if user is not initialized
     useEffect(() => {
@@ -28,12 +30,18 @@ function App() {
     const handleAuthSubmit = async (e) => {
         e.preventDefault();
         if (pseudonym.trim()) {
+            setIsSubmitting(true);
+            setAuthError('');
             try {
                 await initialize(pseudonym.trim());
                 setShowAuthModal(false);
                 setPseudonym('');
             } catch (error) {
+                const errorMsg = error.message || 'Failed to initialize user. Please try again.';
+                setAuthError(errorMsg);
                 console.error('Failed to initialize user:', error);
+            } finally {
+                setIsSubmitting(false);
             }
         }
     };
@@ -94,6 +102,7 @@ function App() {
                                 value={pseudonym}
                                 onChange={(e) => setPseudonym(e.target.value)}
                                 placeholder="Your pseudonym"
+                                disabled={isSubmitting}
                                 style={{
                                     width: '100%',
                                     padding: '12px 16px',
@@ -102,25 +111,41 @@ function App() {
                                     background: 'var(--bg-tertiary)',
                                     color: 'var(--text-primary)',
                                     fontSize: '1rem',
-                                    marginBottom: '16px'
+                                    marginBottom: '16px',
+                                    opacity: isSubmitting ? 0.6 : 1,
+                                    cursor: isSubmitting ? 'not-allowed' : 'auto'
                                 }}
                                 required
                             />
+                            {authError && (
+                                <div style={{
+                                    background: 'rgba(220, 38, 38, 0.1)',
+                                    border: '1px solid rgba(220, 38, 38, 0.3)',
+                                    color: '#dc2626',
+                                    padding: '12px',
+                                    borderRadius: '6px',
+                                    marginBottom: '16px',
+                                    fontSize: '0.9rem'
+                                }}>
+                                    {authError}
+                                </div>
+                            )}
                             <button
                                 type="submit"
+                                disabled={isSubmitting}
                                 style={{
                                     width: '100%',
                                     padding: '12px 16px',
-                                    background: 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
+                                    background: isSubmitting ? 'rgba(0, 0, 0, 0.3)' : 'linear-gradient(135deg, var(--accent-primary), var(--accent-secondary))',
                                     color: 'white',
                                     border: 'none',
                                     borderRadius: '8px',
                                     fontWeight: 600,
-                                    cursor: 'pointer',
+                                    cursor: isSubmitting ? 'not-allowed' : 'pointer',
                                     fontSize: '1rem'
                                 }}
                             >
-                                Start Trading
+                                {isSubmitting ? 'Creating Profile...' : 'Start Trading'}
                             </button>
                         </form>
                     </div>
